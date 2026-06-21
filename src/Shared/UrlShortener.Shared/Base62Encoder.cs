@@ -6,7 +6,7 @@ namespace UrlShortener.Shared
     {
         const string Alphabet = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz";
 
-        public static string Encode(long number)
+        public string Encode(ulong number)
         {
             if (number == 0) 
                 return Alphabet[0].ToString();
@@ -14,16 +14,16 @@ namespace UrlShortener.Shared
             var sb = new StringBuilder();
             while (number > 0)
             {
-                sb.Insert(0, Alphabet[(int)number % 62]);
+                sb.Insert(0, Alphabet[(int)(number % 62)]);
                 number /= 62;
             }
 
             return sb.ToString();
         }
 
-        public static long Decode(string base62Text)
+        public ulong Decode(string base62Text)
         {
-            long number = 0;
+            ulong number = 0;
 
             foreach (var ch in base62Text)
             {
@@ -31,7 +31,7 @@ namespace UrlShortener.Shared
                 if (index == -1)
                     throw new ArgumentException("Недопустимый символ в строке Base62.");
 
-                number = number * 62 + index;
+                number = (number * 62) + (ulong)index;
             }
 
             return number;
