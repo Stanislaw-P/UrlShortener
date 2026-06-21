@@ -9,6 +9,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrlShortener.API", "src\Ser
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrlShortener.Analytics", "src\Services\UrlShortener.Analytics\UrlShortener.Analytics.csproj", "{27599230-81E4-4BE1-8C31-1E5DB3A65EFF}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "UrlShortener.Persistence", "src\Persistence\UrlShortener.Persistence\UrlShortener.Persistence.csproj", "{049E83C7-1D28-4679-84E8-E7816898FAD3}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -27,6 +29,10 @@ Global
 		{27599230-81E4-4BE1-8C31-1E5DB3A65EFF}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{27599230-81E4-4BE1-8C31-1E5DB3A65EFF}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{27599230-81E4-4BE1-8C31-1E5DB3A65EFF}.Release|Any CPU.Build.0 = Release|Any CPU
+		{049E83C7-1D28-4679-84E8-E7816898FAD3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{049E83C7-1D28-4679-84E8-E7816898FAD3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{049E83C7-1D28-4679-84E8-E7816898FAD3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{049E83C7-1D28-4679-84E8-E7816898FAD3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
