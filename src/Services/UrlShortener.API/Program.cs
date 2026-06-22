@@ -1,5 +1,6 @@
 using Microsoft.EntityFrameworkCore;
 using UrlShortener.Persistence;
+using UrlShortener.Persistence.Repositories;
 using UrlShortener.Shared;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -16,6 +17,7 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddSingleton<Base62Encoder>();
+builder.Services.AddScoped<IShortUrlRepository, ShortUrlRepository>();
 
 var app = builder.Build();
 

@@ -8,9 +8,9 @@ namespace UrlShortener.Persistence.Models
 {
     public class ShortUrl
     {
-        public ulong Id { get; set; }
+        public long Id { get; set; }
         public string LongUrl { get; set; } = string.Empty;
-        public string ShortCode { get; set; } = string.Empty;
+        public string? ShortCode { get; set; } 
         public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
     }
 }

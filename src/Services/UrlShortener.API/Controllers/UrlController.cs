@@ -1,6 +1,9 @@
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Hosting;
 using UrlShortener.API.Models;
+using UrlShortener.Persistence.Models;
+using UrlShortener.Persistence.Repositories;
 using UrlShortener.Shared;
 
 namespace UrlShortener.API.Controllers
@@ -12,44 +15,60 @@ namespace UrlShortener.API.Controllers
         readonly ILogger<UrlController> _logger;
         readonly Base62Encoder _encoder;
         readonly IConfiguration _configuration;
+        readonly IShortUrlRepository _urlRepository;
 
-        public UrlController(ILogger<UrlController> logger, IConfiguration configuration)
+        public UrlController(ILogger<UrlController> logger, IConfiguration configuration, IShortUrlRepository urlRepository)
         {
             _logger = logger;
             _encoder = new Base62Encoder();
             _configuration = configuration;
+            _urlRepository = urlRepository;
         }
 
         [HttpPost("shorten")]
-        public async Task<IResult> ShortenUrl([FromBody] ShortenRequest request)
+        public async Task<IResult> ShortenUrlAsync([FromBody] ShortenRequest request)
         {
-            // ... логика сохранения в БД и получения ID ...
-            string code = _encoder.Encode(123);
+            string baseUrl = _configuration["ShortenerSettings:BaseUrl"] ?? "https://localhost";
 
-            // Динамически собираем: "https://" + "localhost:7049" + "/" + "6ax7"
-            string baseUrl = _configuration["ShortenerSettings:BaseUrl"] ?? "https://localhost/";
+            // Проверяем не существует ли уже ссылка в БД
+            var existingUrl = await _urlRepository.TryGetByLongUrlAsync(request.LongUrl);
+            if (existingUrl != null)
+                return Results.Ok(new { ShortUrl = $"{baseUrl}/{existingUrl.ShortCode}" });
 
-            //string shortUrl = $"{scheme}://{host}/{code}";
-            string shortUrl = $"google";
+            // Сохраняем в БД
+            var newUrlModel = new ShortUrl
+            {
+                LongUrl = request.LongUrl,
+            };
+            await _urlRepository.AddAsync(newUrlModel);
+
+            // Генерируем код на основе Id
+            string code = _encoder.Encode(newUrlModel.Id);
+            newUrlModel.ShortCode = code;
+
+            // Обновляем запись в БД
+            await _urlRepository.UpdateAsync(newUrlModel);
+
+            // Собираем URL
+            var scheme = HttpContext.Request.Scheme;
+            string host = HttpContext.Request.Host.ToUriComponent();
+
+            string shortUrl = $"{scheme}://{host}/{code}";
 
             return Results.Ok(new { ShortUrl = shortUrl });
         }
 
         [HttpGet("~/{code}")]
-        public async Task<IActionResult> RedirectToOriginal(string code)
+        public async Task<IActionResult> RedirectToOriginalAsync(string code)
         {
-            // Пока это заглушка для 2 этапа:
-            // Ищем в БД длинный URL по нашему короткому коду
-            // var urlEntry = await _dbContext.ShortUrls.FirstOrDefaultAsync(x => x.ShortCode == code);
-
-            // if (urlEntry == null)
-            //     return NotFound("Ссылка не найдена");
+            var existingUrl = await _urlRepository.TryGetByShortCodeAsync(code);
+            if (existingUrl == null) 
+                return NotFound("Ссылка не найдена");
 
             // Имитируем, что нашли (для теста)
-            string targetUrl = "https://google.com";
+            string targetUrl = existingUrl.LongUrl;
 
-            // Возвращаем HTTP 302 Redirect
-            return Ok(targetUrl);
+            return Redirect(targetUrl);
         }
     }
 }

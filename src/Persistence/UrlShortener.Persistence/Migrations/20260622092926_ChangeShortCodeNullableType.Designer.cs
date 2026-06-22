@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UrlShortener.Persistence;
@@ -11,9 +12,11 @@ using UrlShortener.Persistence;
 namespace UrlShortener.Persistence.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260622092926_ChangeShortCodeNullableType")]
+    partial class ChangeShortCodeNullableType
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,11 +27,9 @@ namespace UrlShortener.Persistence.Migrations
 
             modelBuilder.Entity("UrlShortener.Persistence.Models.ShortUrl", b =>
                 {
-                    b.Property<long>("Id")
+                    b.Property<decimal>("Id")
                         .ValueGeneratedOnAdd()
-                        .HasColumnType("bigint");
-
-                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Id"));
+                        .HasColumnType("numeric(20,0)");
 
                     b.Property<DateTimeOffset>("CreatedAt")
                         .HasColumnType("timestamp with time zone");
@@ -41,12 +42,6 @@ namespace UrlShortener.Persistence.Migrations
                         .HasColumnType("text");
 
                     b.HasKey("Id");
-
-                    b.HasIndex("LongUrl")
-                        .IsUnique();
-
-                    b.HasIndex("ShortCode")
-                        .IsUnique();
 
                     b.ToTable("ShortUrls");
                 });
