@@ -19,6 +19,15 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
 builder.Services.AddSingleton<Base62Encoder>();
 builder.Services.AddScoped<IShortUrlRepository, ShortUrlRepository>();
 
+var redisConn = builder.Configuration.GetConnectionString("Redis");
+var instanceName = builder.Configuration["RedisOptions:InstanceName"];
+
+builder.Services.AddStackExchangeRedisCache(options =>
+{
+    options.Configuration = redisConn;
+    options.InstanceName = instanceName ?? "Default_";
+});
+
 var app = builder.Build();
 
 using (var scope = app.Services.CreateScope())
