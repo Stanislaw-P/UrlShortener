@@ -41,7 +41,7 @@ docker-compose up --build -d
 | Кэш Redis: | localhost:6379 |
 
 ## 🚦 Проверка работоспособности (Quick Start)
-1. Откройте Swagger UI и отправьте ```POST``` запрос на /api/urls/shorten:
+1. Откройте Swagger UI и отправьте ```POST``` запрос на ```/api/urls/shorten```:
 ```
 {
   "longUrl": "https://github.com/phatboyg/MassTransit/123"
