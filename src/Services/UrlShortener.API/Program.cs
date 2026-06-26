@@ -12,6 +12,7 @@ builder.Services.AddControllers();
 // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+builder.Configuration.AddEnvironmentVariables();
 
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection");
 builder.Services.AddDbContext<DatabaseContext>(options =>
@@ -30,13 +31,14 @@ builder.Services.AddStackExchangeRedisCache(options =>
 });
 
 // RabbitMQ
+var rabbitHost = builder.Configuration["RabbitMQOptions:Host"] ?? "localhost";
 var rabbitUserName = builder.Configuration["RabbitMQOptions:UserName"] ?? "guest";
 var rabbitPassword = builder.Configuration["RabbitMQOptions:Password"] ?? "guest";
 builder.Services.AddMassTransit(x =>
 {
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("localhost", "/", h =>
+        cfg.Host(rabbitHost, "/", h =>
         {
             h.Username(rabbitUserName);
             h.Password(rabbitPassword);

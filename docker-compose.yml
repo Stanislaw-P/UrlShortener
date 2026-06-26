@@ -7,6 +7,11 @@ services:
       POSTGRES_USER: postgres
       POSTGRES_PASSWORD: postgres_pass
       POSTGRES_DB: url_shortener_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d url_shortener_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     ports:
       - "5432:5432"
     volumes:
@@ -33,6 +38,49 @@ services:
       - "15672:15672" 
     volumes:
       - rabbitmq_data:/var/lib/rabbitmq
+
+  url-api:
+    image: urlshortener-api
+    container_name: shortener-api
+    restart: always
+    build:
+      context: .
+      dockerfile: src/Services/UrlShortener.API/Dockerfile
+    ports:
+      - "8080:8080" 
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=shortener-postgres;Database=url_shortener_db;Username=postgres;Password=postgres_pass
+      - ConnectionStrings__Redis=shortener-redis:6379
+      - RabbitMQOptions__Host=shortener-rabbitmq
+      - RabbitMQOptions__UserName=guest
+      - RabbitMQOptions__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_started
+      rabbitmq:
+        condition: service_started
+
+  url-analytics:
+    image: urlshortener-analytics
+    container_name: shortener-analytics
+    restart: always
+    build:
+      context: . 
+      dockerfile: src/Services/UrlShortener.Analytics/Dockerfile
+    environment:
+      - DOTNET_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=shortener-postgres;Database=url_shortener_db;Username=postgres;Password=postgres_pass
+      - RabbitMQOptions__Host=shortener-rabbitmq
+      - RabbitMQOptions__UserName=guest
+      - RabbitMQOptions__Password=guest
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_started
 
 volumes:
   postgres_data:

@@ -11,16 +11,17 @@ builder.Services.AddDbContext<DatabaseContext>(options =>
     options.UseNpgsql(connectionString));
 
 builder.Services.AddScoped<ILinkStatsRepository, LinkStatsRepository>();
+builder.Configuration.AddEnvironmentVariables();
 
+var rabbitHost = builder.Configuration["RabbitMQOptions:Host"] ?? "localhost";
 var rabbitUserName = builder.Configuration["RabbitMQOptions:UserName"] ?? "guest";
 var rabbitPassword = builder.Configuration["RabbitMQOptions:Password"] ?? "guest";
 builder.Services.AddMassTransit(x =>
 {
     x.AddConsumer<UrlClickedConsumer>();
-
     x.UsingRabbitMq((context, cfg) =>
     {
-        cfg.Host("localhost", "/", h =>
+        cfg.Host(rabbitHost, "/", h =>
         {
             h.Username(rabbitUserName);
             h.Password(rabbitPassword);
