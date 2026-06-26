@@ -8,10 +8,12 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <PackageReference Include="MassTransit.RabbitMQ" Version="9.1.2" />
     <PackageReference Include="Microsoft.Extensions.Hosting" Version="8.0.1" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\Persistence\UrlShortener.Persistence\UrlShortener.Persistence.csproj" />
     <ProjectReference Include="..\..\Shared\UrlShortener.Shared\UrlShortener.Shared.csproj" />
   </ItemGroup>
 </Project>

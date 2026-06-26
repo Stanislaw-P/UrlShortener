@@ -1,7 +1,7 @@
-using Microsoft.AspNetCore.Http;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Hosting;
+using System.Text.Json;
 using UrlShortener.API.Models;
 using UrlShortener.Persistence.Models;
 using UrlShortener.Persistence.Repositories;
@@ -18,14 +18,16 @@ namespace UrlShortener.API.Controllers
         readonly IConfiguration _configuration;
         readonly IShortUrlRepository _urlRepository;
         readonly IDistributedCache _cache;
+        readonly IPublishEndpoint _publishEndpoint;
 
-        public UrlController(ILogger<UrlController> logger, IConfiguration configuration, IShortUrlRepository urlRepository, IDistributedCache cache)
+        public UrlController(ILogger<UrlController> logger, IConfiguration configuration, IShortUrlRepository urlRepository, IDistributedCache cache, IPublishEndpoint publishEndpoint)
         {
             _logger = logger;
             _encoder = new Base62Encoder();
             _configuration = configuration;
             _urlRepository = urlRepository;
             _cache = cache;
+            _publishEndpoint = publishEndpoint;
         }
 
         [HttpPost("shorten")]
@@ -35,7 +37,7 @@ namespace UrlShortener.API.Controllers
             
             var cacheOptions = new DistributedCacheEntryOptions
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(21) 
+                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7) 
             };
 
             // Проверяем не существует ли уже ссылка в БД
@@ -43,7 +45,8 @@ namespace UrlShortener.API.Controllers
             if (existingUrl != null)
             {
                 // Оптимизация: параллельно "прогреваем" кэш в Redis, если ссылки там вдруг не оказалось
-                await _cache.SetStringAsync(existingUrl.ShortCode ?? _encoder.Encode(existingUrl.Id), existingUrl.LongUrl, cacheOptions);
+                var entry = JsonSerializer.Serialize(new CachedUrlEntry { UrlId = existingUrl.Id, LongUrl = existingUrl.LongUrl });
+                await _cache.SetStringAsync(existingUrl.ShortCode ?? _encoder.Encode(existingUrl.Id), entry, cacheOptions);
             
                 return Ok(new { ShortUrl = $"{baseUrl}/{existingUrl.ShortCode}" });
             }
@@ -62,7 +65,8 @@ namespace UrlShortener.API.Controllers
             // Обновляем запись в БД
             await _urlRepository.UpdateAsync(newUrlModel);
 
-            await _cache.SetStringAsync(code, newUrlModel.LongUrl, cacheOptions);
+            var newEntry = JsonSerializer.Serialize(new CachedUrlEntry { UrlId = newUrlModel.Id, LongUrl = newUrlModel.LongUrl });
+            await _cache.SetStringAsync(code, newEntry, cacheOptions);
 
             // Собираем URL
             var scheme = HttpContext.Request.Scheme;
@@ -76,24 +80,75 @@ namespace UrlShortener.API.Controllers
         [HttpGet("~/{code}")]
         public async Task<IActionResult> RedirectToOriginalAsync(string code)
         {
-            var targetUrl = await _cache.GetStringAsync(code);
-            if (targetUrl != null)
-                return Redirect(targetUrl);
+            long urlId;
+            string targetUrl;
 
-            var existingUrl = await _urlRepository.TryGetByShortCodeAsync(code);
-            if (existingUrl == null)
-                return NotFound("Ссылка не найдена");
-
-            targetUrl = existingUrl.LongUrl;
-
-            var cacheOptions = new DistributedCacheEntryOptions
+            var cached = await _cache.GetStringAsync(code);
+            if (cached != null)
             {
-                AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(21)
-            };
+                // Cache hit — десериализуем объект, у нас есть и Id, и LongUrl
+                var entry = JsonSerializer.Deserialize<CachedUrlEntry>(cached);
+                if (entry == null)
+                    return NotFound("Ссылка не найдена");
 
-            await _cache.SetStringAsync(code, targetUrl, cacheOptions);
+                urlId = entry.UrlId;
+                targetUrl = entry.LongUrl;
+            }
+            else
+            {
+                // Cache miss — идём в БД
+                var existingUrl = await _urlRepository.TryGetByShortCodeAsync(code);
+                if (existingUrl == null)
+                    return NotFound("Ссылка не найдена");
+
+                urlId = existingUrl.Id;
+                targetUrl = existingUrl.LongUrl;
+
+                // Прогреваем кэш с полным объектом
+                var cacheOptions = new DistributedCacheEntryOptions
+                {
+                    AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
+                };
+                var entry = JsonSerializer.Serialize(new CachedUrlEntry { UrlId = urlId, LongUrl = targetUrl });
+                await _cache.SetStringAsync(code, entry, cacheOptions);
+            }
+
+            // Публикуем событие
+            var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+            await _publishEndpoint.Publish(new UrlClickedEvent(urlId, code, DateTime.UtcNow, ipAddress));
 
             return Redirect(targetUrl);
         }
+
+        ////[HttpGet("~/{code}")]
+        //public async Task<IActionResult> RedirectTtoOriginalAsync(string code)
+        //{
+        //    var targetUrl = await _cache.GetStringAsync(code);
+        //    if (targetUrl != null)
+        //        return Redirect(targetUrl);
+
+        //    var existingUrl = await _urlRepository.TryGetByShortCodeAsync(code);
+        //    if (existingUrl == null)
+        //        return NotFound("Ссылка не найдена");
+
+        //    targetUrl = existingUrl.LongUrl;
+
+        //    var cacheOptions = new DistributedCacheEntryOptions
+        //    {
+        //        AbsoluteExpirationRelativeToNow = TimeSpan.FromDays(7)
+        //    };
+
+        //    // Вместо: await _cache.SetStringAsync(code, longUrl, cacheOptions);
+        //    var entry = JsonSerializer.Serialize(new CachedUrlEntry { UrlId = newUrlModel.Id, LongUrl = newUrlModel.LongUrl });
+        //    await _cache.SetStringAsync(code, entry, cacheOptions);
+
+        //    await _cache.SetStringAsync(code, targetUrl, cacheOptions);
+
+        //    // Публикуем сообщение в RabbitMQ
+        //    var ipAddress = HttpContext.Connection.RemoteIpAddress?.ToString() ?? "anonymous";
+        //    await _publishEndpoint.Publish(new UrlClickedEvent(existingUrl.Id, code, DateTime.UtcNow, ipAddress));
+
+        //    return Redirect(targetUrl);
+        //}
     }
 }

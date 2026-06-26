@@ -1,3 +1,4 @@
+using MassTransit;
 using Microsoft.EntityFrameworkCore;
 using UrlShortener.Persistence;
 using UrlShortener.Persistence.Repositories;
@@ -26,6 +27,21 @@ builder.Services.AddStackExchangeRedisCache(options =>
 {
     options.Configuration = redisConn;
     options.InstanceName = instanceName ?? "Default_";
+});
+
+// RabbitMQ
+var rabbitUserName = builder.Configuration["RabbitMQOptions:UserName"] ?? "guest";
+var rabbitPassword = builder.Configuration["RabbitMQOptions:Password"] ?? "guest";
+builder.Services.AddMassTransit(x =>
+{
+    x.UsingRabbitMq((context, cfg) =>
+    {
+        cfg.Host("localhost", "/", h =>
+        {
+            h.Username(rabbitUserName);
+            h.Password(rabbitPassword);
+        });
+    });
 });
 
 var app = builder.Build();

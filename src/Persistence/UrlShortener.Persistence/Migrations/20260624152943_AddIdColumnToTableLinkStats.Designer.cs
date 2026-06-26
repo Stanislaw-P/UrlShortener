@@ -2,6 +2,7 @@
 using System;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 using UrlShortener.Persistence;
@@ -11,9 +12,11 @@ using UrlShortener.Persistence;
 namespace UrlShortener.Persistence.Migrations
 {
     [DbContext(typeof(DatabaseContext))]
-    partial class DatabaseContextModelSnapshot : ModelSnapshot
+    [Migration("20260624152943_AddIdColumnToTableLinkStats")]
+    partial class AddIdColumnToTableLinkStats
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -24,7 +27,7 @@ namespace UrlShortener.Persistence.Migrations
 
             modelBuilder.Entity("UrlShortener.Persistence.Models.LinkStats", b =>
                 {
-                    b.Property<long>("ShortUrlId")
+                    b.Property<long>("Id")
                         .HasColumnType("bigint");
 
                     b.Property<int>("ClickCount")
@@ -38,7 +41,7 @@ namespace UrlShortener.Persistence.Migrations
                         .HasMaxLength(10)
                         .HasColumnType("character varying(10)");
 
-                    b.HasKey("ShortUrlId");
+                    b.HasKey("Id");
 
                     b.ToTable("LinksStats");
                 });
@@ -76,7 +79,7 @@ namespace UrlShortener.Persistence.Migrations
                 {
                     b.HasOne("UrlShortener.Persistence.Models.ShortUrl", "ShortUrl")
                         .WithOne()
-                        .HasForeignKey("UrlShortener.Persistence.Models.LinkStats", "ShortUrlId")
+                        .HasForeignKey("UrlShortener.Persistence.Models.LinkStats", "Id")
                         .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
